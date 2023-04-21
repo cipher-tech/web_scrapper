@@ -14,7 +14,6 @@ coverage/
 *.env
 dist
 package-lock.json
-.eslintrc.json
 env.rc
 .vscode
 .npmrc
