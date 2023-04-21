@@ -7,7 +7,8 @@
     "dev": "NODE_ENV=development ts-node-dev --watch ['src'] --respawn src/index.ts",
     "lint": "eslint --ext .ts src tests",
     "prettier": "prettier '{src,tests}/**/*.ts' --write",
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "build": "rm -rf build && tsc --build tsconfig.build.json"
   },
   "keywords": [
     "Puppeteer",
