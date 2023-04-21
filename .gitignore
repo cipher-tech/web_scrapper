@@ -1,0 +1,21 @@
+# Dependencies
+node_modules
+
+# Environment varibales
+.env*
+!.env*.example
+
+# Code coverage
+coverage
+
+node_modules/
+coverage/
+*.log
+*.env
+dist
+package-lock.json
+.eslintrc.json
+env.rc
+.vscode
+.npmrc
+.eslintrc.js
