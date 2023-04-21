@@ -4,7 +4,7 @@
   "description": "A test project using Puppeteer to scrap web pages.",
   "main": "src/index.js",
   "scripts": {
-    "dev": "NODE_ENV=development ts-node-dev --watch ['src'] --respawn src/index.ts",
+    "dev": "ts-node-dev --watch ['src'] --respawn src/index.ts",
     "lint": "eslint --ext .ts src tests",
     "prettier": "prettier '{src,tests}/**/*.ts' --write",
     "tsc": "tsc",
@@ -29,5 +29,8 @@
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3"
   }
 }
