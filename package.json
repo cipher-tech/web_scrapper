@@ -1,0 +1,15 @@
+{
+  "name": "web_scrapper",
+  "version": "1.0.0",
+  "description": "A test project using Puppeteer to scrap web pages.",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm jest"
+  },
+  "keywords": [
+    "Puppeteer",
+    "scrap"
+  ],
+  "author": "Onubogu CHibuikem",
+  "license": "ISC"
+}
