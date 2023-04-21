@@ -2,7 +2,7 @@
   "name": "web_scrapper",
   "version": "1.0.0",
   "description": "A test project using Puppeteer to scrap web pages.",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "dev": "NODE_ENV=development ts-node-dev --watch ['src'] --respawn src/index.ts",
     "lint": "eslint --ext .ts src tests",
@@ -17,6 +17,7 @@
   "author": "Onubogu Chibuikem",
   "license": "ISC",
   "devDependencies": {
+    "@types/node": "^18.15.13",
     "eslint": "^8.39.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-airbnb-typescript": "^17.0.0",
