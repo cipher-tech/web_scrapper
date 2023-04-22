@@ -6,6 +6,7 @@ dotenv.config()
 // initiated dotenv before importing config to ensure it gets populated.
 // eslint-disable-next-line import/first
 import config from "./config";
+import { BankScrapperController } from "./controllers";
 
 let logger;
 // initialize logger for the right environment
@@ -18,3 +19,6 @@ if (config?.ENVIRONMENT === "development") {
 }
 
 logger.info("Project initialized")
+
+const bankScrapper = new BankScrapperController()
+bankScrapper.scrapBank({bank: "bank_of_okra"})
