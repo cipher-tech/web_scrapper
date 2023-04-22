@@ -32,6 +32,8 @@
   },
   "dependencies": {
     "dotenv": "^16.0.3",
+    "puppeteer": "^19.10.1",
+    "puppeteer-core": "^19.10.1",
     "winston": "^3.8.2"
   }
 }

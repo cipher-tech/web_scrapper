@@ -18,4 +18,3 @@ if (config?.ENVIRONMENT === "development") {
 }
 
 logger.info("Project initialized")
-
