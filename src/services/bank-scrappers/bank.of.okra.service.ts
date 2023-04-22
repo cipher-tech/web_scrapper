@@ -1,4 +1,5 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
+import config from '../../config';
 
 type BankOfOkraOptions = {
     url: string
@@ -28,10 +29,41 @@ export class BankOfOkraScrapperService {
         this.page = await this.browser.newPage();
     }
 
+    async authenticateUser(page: Page) {
+        // click the login button
+        await page.click('[href="/login"]')
+
+        // fill out the form 
+        // enter email
+        await page.type('#email', (config?.EMAIL || ""));
+        // enter password
+        await page.type('#password', (config?.PASSWORD || ""));
+        // submit form
+        await page.click('[type="submit"]')
+
+        // dismiss dialog
+        await page.on('dialog', async dialog => {
+            await dialog.dismiss();
+        });
+
+        // enter opt
+        await this.page.waitForSelector("#otp");
+        await this.page.type('#otp', (config?.OTP || ""));
+
+        // click submit  
+        await this.page.click('[type="submit"]')
+        return true;
+    }
     async run(options: BankOfOkraOptions) {
         await this.createBrowser()
         this.url = options.url;
+        // go to website
         await this.page.goto(this.url);
+
+        // Set screen size
+        await this.page.setViewport({ width: 1366, height: 768 });
+        // authenticate user
+        this.authenticateUser(this.page)
     }
 
 }
