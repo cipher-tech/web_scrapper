@@ -2,7 +2,8 @@ import { ISupportedBanks } from "../interfaces/supported.banks.interface"
 import { supportedBanks } from "../services";
 
 type scrapBankOptions = {
-    bank: keyof ISupportedBanks
+    bank: keyof ISupportedBanks,
+    url: string,
 }
 interface IBankScrapper {
     scrapBank: (options: scrapBankOptions) => void;
@@ -21,7 +22,10 @@ interface IBankScrapper {
  */
 
 export class BankScrapperController implements IBankScrapper {
-    scrapBank(options: scrapBankOptions) {
-        new supportedBanks[options.bank]().run()
+    async scrapBank(options: scrapBankOptions) {
+        const scrapperClass =  supportedBanks[options.bank];
+        const scrapper =  await new scrapperClass();
+
+        scrapper.run({url: options.url})
     }
 }
