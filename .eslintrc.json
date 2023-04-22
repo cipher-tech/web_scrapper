@@ -38,6 +38,7 @@
     "max-classes-per-file": 0,
     "import/no-dynamic-require": 0,
     "import/extensions": 0,
+    "import/no-extraneous-dependencies": 0,
     "@typescript-eslint/await-thenable": "error",
     "@typescript-eslint/explicit-module-boundary-types": 0,
     "@typescript-eslint/ban-ts-comment": 0,
