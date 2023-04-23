@@ -6,7 +6,8 @@ import production from "./env/production";
 // set default config keys for all environments
 const defaults = {
     root: path.normalize(`${__dirname}/..`),
-    serviceName: "web_scrapper"
+    serviceName: "web_scrapper",
+    SALT_ROUNDS: process.env.SALT_ROUNDS
 };
 
 // pre-select config object based on the node environment(development, production etc).
