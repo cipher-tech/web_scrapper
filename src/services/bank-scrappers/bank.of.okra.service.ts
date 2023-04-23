@@ -75,6 +75,22 @@ export class BankOfOkraScrapperService {
 
         return customer
     }
+    async getAccountInformation(page: Page) {
+        const account: any[] = []
+
+        // get user account information
+        const accountInfo = await page.$$('section.rounded');
+
+        for (let acct of accountInfo) {
+            let title = await page.evaluate(el => el.querySelector('div > h3')?.textContent, acct)
+            let amount = await page.evaluate(el => el.querySelector('div > p.font-bold')?.textContent, acct)
+            let bal = await page.evaluate(el => el.querySelector('p:nth-child(2)')?.textContent, acct)
+            account.push({ title, amount, bal })
+        }
+
+
+        return account
+    }
     async run(options: BankOfOkraOptions) {
         await this.createBrowser()
         this.url = options.url;
@@ -90,7 +106,10 @@ export class BankOfOkraScrapperService {
         await this.page.waitForSelector('[class="text-2xl font-semibold text-gray-800"]');
         const customer = await this.getCustomerDetails(this.page)
 
-        return {customer}
+        const accountInformation = this.getAccountInformation(this.page)
+        // const accountButtons = await this.page.$$('[class="flex-1 w-full"] a.rounded');
+
+        return { customer, accountInformation}
     }
 
 }
