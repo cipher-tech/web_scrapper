@@ -1,8 +1,8 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import config from '../../config';
-import { IAccount, IAuth, ICustomer, ITransaction } from '../../interfaces/user.interface';
+import { IAccount, IAuth, ICustomer, ICustomerScrapTemplate, ITransaction } from '../../interfaces/user.interface';
 import { replaceString } from '../../util/replace.string.util';
-import { BankFormatter } from '../formatter/bank.formatter.service';
+import { Formatter } from '../formatter/bank.formatter.service';
 import { IScrapBankOptions } from '../../controllers/bank.scrapper.controller';
 
 interface IBankOfOkraOptions extends IScrapBankOptions {
@@ -74,13 +74,7 @@ export class BankOfOkraScrapperService {
 
     async getCustomerDetails(page: Page) {
         try {
-            let customer: ICustomer = {
-                name: "",
-                address: "",
-                bvn: "",
-                phone_no: "",
-                email: "",
-            }
+            let customer: Partial<ICustomerScrapTemplate> = { }
             // get customer name
             const customerName = await page.$$('[class="text-2xl font-semibold text-gray-800"]');
 
@@ -93,10 +87,19 @@ export class BankOfOkraScrapperService {
 
             customer.address = await page.evaluate(el => el.textContent, customerInfo[ 0 ]) || ''
             customer.bvn = await page.evaluate(el => el.textContent, customerInfo[ 1 ]) || ""
-            customer.phone_no = await page.evaluate(el => el.textContent, customerInfo[ 2 ]) || ""
+            customer.phoneNumber = await page.evaluate(el => el.textContent, customerInfo[ 2 ]) || ""
             customer.email = await page.evaluate(el => el.textContent, customerInfo[ 3 ]) || ""
 
-            return customer
+            // format scrapped customer data
+            const formatter = new Formatter()
+            // remove unwanted text before sending to formatter
+            return formatter.customerFormatter({
+                name: replaceString((customer.name || ''),'Welcome back', ''),
+                address: replaceString(customer.address, 'Address:', ''),
+                bvn: replaceString(customer.bvn, 'bvn:', ''),
+                phoneNumber: replaceString(customer.phoneNumber, 'phoneNumber:', ''),
+                email: replaceString(customer.email, 'email:', ''),
+            })
         } catch (error) {
             console.log(error);
             throw "Could not get customer information"
@@ -108,7 +111,7 @@ export class BankOfOkraScrapperService {
         try {
             const account: IAccount[] = []
 
-            const bankFormatter = new BankFormatter()
+            const bankFormatter = new Formatter()
             // get user account information
             const accountInfo = await page.$$('section.rounded');
 
@@ -222,7 +225,7 @@ export class BankOfOkraScrapperService {
             await this.authenticateUser(this.page, options)
 
             // wait for page to navigate to user information page
-            await this.page.waitForNavigation()
+            await this.page.waitForNavigation() 
             // wait for element to appear on screen
             await this.page.waitForSelector('[class="text-2xl font-semibold text-gray-800"]');
             // get customer information
@@ -234,6 +237,8 @@ export class BankOfOkraScrapperService {
             // add transactions to account information
             const transactionInformation = await this.getTransactions(this.page, accountInformation)
 
+            console.log({ customer, accountInformation, transactionInformation });
+            
             return { customer, accountInformation, transactionInformation }
         } catch (error) {
             console.log(error);
