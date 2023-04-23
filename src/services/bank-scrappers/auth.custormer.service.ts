@@ -1,5 +1,5 @@
 import AuthModel from "../../models/auth.model";
-import { BankFormatter } from "../../services/formatter/bank.formatter.service";
+import { Formatter } from "../../services/formatter/bank.formatter.service";
 import HashText from "../../util/hashText.helper";
 
 export class CustomerAuthService {
@@ -10,7 +10,7 @@ export class CustomerAuthService {
         const auth = await AuthModel.findOne({ token: token.toLowerCase(), platform }).exec();
 
         if (!auth?.token) {
-            const formatter = new BankFormatter()
+            const formatter = new Formatter()
             const newAuth = new AuthModel(await formatter.authFormatter({ token, passCode, platform }))
             newAuth.save();
             return newAuth;
