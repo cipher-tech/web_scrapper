@@ -1,11 +1,26 @@
+// Standard Customer format after formatting
 export interface ICustomer {
     name: string
     address: string
     bvn: string
-    phone_no: string
+    phoneNumber: string
     email: string
 }
 
+// general template to populate after scrapping for customer information
+export interface ICustomerScrapTemplate {
+    firstName: string,
+    lastName: string,
+    name: string,
+    bvn: string,
+    phoneNumber: string,
+    email: string,
+    address: string,
+    apartmentNumber: string,
+    street: string
+    state: string,
+    country: string
+}
 export interface IAuth {
     token: string,
     passCode: string,
