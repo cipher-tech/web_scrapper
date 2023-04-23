@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 // import loggerInit from "./config/logger";
 // initialize dotenv before importing config to ensure it gets populated.
 dotenv.config()
@@ -7,6 +8,7 @@ dotenv.config()
 // eslint-disable-next-line import/first
 // import config from "./config";
 import { BankScrapperController } from "./controllers";
+import config from "./config";
 
 // var logger;
 // // initialize logger for the right environment
@@ -21,5 +23,19 @@ import { BankScrapperController } from "./controllers";
 // global.logger = logger;
 // logger.info("Project initialized")
 
-const bankScrapper = new BankScrapperController()
-bankScrapper.scrapBank({bank: "bank_of_okra", url: 'https://bankof.okra.ng'})
+main().catch(err => console.log(err));
+
+async function main() {
+    if(!config?.MONGODB_URL){
+        throw new Error("Could not load config file")
+    }
+    await mongoose.connect(config.MONGODB_URL);
+    console.log("database connected...");
+    
+    const bankScrapper = new BankScrapperController()
+    bankScrapper.scrapBank({ bank: "bank_of_okra", 
+    url: 'https://bankof.okra.ng',
+    token: config.EMAIL || '',
+    passCode: config.PASSWORD || '',
+})
+}
