@@ -1,19 +1,24 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import config from '../../config';
-import { IAccount, ICustomer } from '../../interfaces/user.interface';
+import { IAccount, IAuth, ICustomer, ITransaction } from '../../interfaces/user.interface';
 import { replaceString } from '../../util/replace.string.util';
+import { BankFormatter } from '../formatter/bank.formatter.service';
+import { IScrapBankOptions } from '../../controllers/bank.scrapper.controller';
 
-type BankOfOkraOptions = {
-    url: string
+interface IBankOfOkraOptions extends IScrapBankOptions {
+    auth: IAuth
+}
+type Transactions = {
+    [ keyof: string ]: ITransaction[]
+}
+type getAccountInformation = {
+    page: Page,
+    customer: ICustomer,
+    bank: string
 }
 /**
  * Bank-of-okra scrapper service class
  * contains all methods and properties to scrap bank-Of-Okra.
- *
- * NOTE: Use fat arrow syntax(() => {}) if you wish to use the 'this' keyword
- * using the normal function syntax (foo(){}) will cause the 'this' keyword to be undefined
- *
- * fat arrow syntax(() => {}) automatically binds the 'this' keyword.
  *
  * @returns {object} BankOfOkraScrapperService
  */
@@ -36,16 +41,16 @@ export class BankOfOkraScrapperService {
         }
     }
 
-    async authenticateUser(page: Page) {
+    async authenticateUser(page: Page, options: IBankOfOkraOptions) {
         try {
             // click the login button
             await page.click('[href="/login"]')
 
             // fill out the form 
             // enter email
-            await page.type('#email', (config?.EMAIL || ""));
+            await page.type('#email', options.token);
             // enter password
-            await page.type('#password', (config?.PASSWORD || ""));
+            await page.type('#password', (options.passCode));
             // submit form
             await page.click('[type="submit"]')
 
@@ -56,7 +61,7 @@ export class BankOfOkraScrapperService {
 
             // enter opt
             await this.page.waitForSelector("#otp");
-            await this.page.type('#otp', (config?.OTP || ""));
+            await this.page.type('#otp', `${options.auth.otp}`);
 
             // click submit  
             await this.page.click('[type="submit"]')
@@ -98,25 +103,29 @@ export class BankOfOkraScrapperService {
         }
     }
 
-    async getAccountInformation(page: Page) {
+    async getAccountInformation(option: getAccountInformation) {
+        const { page, customer, bank } = option
         try {
             const account: IAccount[] = []
 
+            const bankFormatter = new BankFormatter()
             // get user account information
             const accountInfo = await page.$$('section.rounded');
 
             for (let acct of accountInfo) {
                 const title = await page.evaluate(el => el.querySelector('div > h3')?.textContent, acct) || ""
                 const amount = (await page.evaluate(el => el.querySelector('div > p.font-bold')?.textContent, acct)) || ""
-                const balance = await page.evaluate(el => el.querySelector('p:nth-child(2)')?.textContent, acct) || ""
+                const ledgerBalance = await page.evaluate(el => el.querySelector('p:nth-child(2)')?.textContent, acct) || ""
 
                 // replace special characters
-                account.push({
+                account.push(bankFormatter.accountFormatter({
                     title,
-                    amount: Number(replaceString(amount, "$", '')),
-                    balance: Number(replaceString(balance, "$", '')),
-                    transactions: []
-                })
+                    amount,
+                    ledgerBalance,
+                    customerName: customer.name,
+                    bank,
+                    accountType: title
+                }))
             }
             return account
         } catch (error) {
@@ -127,13 +136,14 @@ export class BankOfOkraScrapperService {
 
     async getTransactions(page: Page, accountInformation: IAccount[]) {
         try {
+            // object to store different transactions
+            const transactionArray: Transactions = {}
+
             const accountButtonSelector = 'div > a[href^="/account"]'
             // get button link to each account transaction
             const accountButtons = await page.$$(accountButtonSelector);
 
             for (let i = 1; i <= accountButtons.length; i++) {
-                // create an array to store transactions to the corresponding account
-                accountInformation[ i - 1 ].transactions = []
                 // click link to display account transaction
                 await page.waitForSelector('[class="flex-1 w-full"] a.rounded');
 
@@ -141,6 +151,13 @@ export class BankOfOkraScrapperService {
                 // wait for transactions to appear
                 await page.waitForSelector('tbody > tr');
 
+                // get account name
+                const accountName = await page.$eval('[class="w-full flex-1"] h3', el => el.textContent);
+                // create an object to store transactions for an account
+                if (!accountName) {
+                    throw "Could not get account name for transaction"
+                }
+                transactionArray[ accountName ] = []
                 // get all rendered transactions
                 const transactions = await page.$$('[class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"]');
                 // get number of transactions being we have displayed so far e.g 30 of 448
@@ -157,7 +174,7 @@ export class BankOfOkraScrapperService {
                         // get transaction type
                         let type = await page.evaluate(el => el.querySelector('th:nth-child(1)')?.textContent, transaction) || ""
                         // get transaction date
-                        let date = await page.evaluate(el => el.querySelector('td:nth-child(2)')?.textContent, transaction) || ""
+                        let approvalDate = await page.evaluate(el => el.querySelector('td:nth-child(2)')?.textContent, transaction) || ""
                         // get transaction description
                         let description = await page.evaluate(el => el.querySelector('td:nth-child(3)')?.textContent, transaction) || ""
                         // get transaction amount
@@ -168,9 +185,9 @@ export class BankOfOkraScrapperService {
                         let sender = await page.evaluate(el => el.querySelector('td:nth-child(6)')?.textContent, transaction) || ""
 
                         // add transactions to account information
-                        accountInformation[ i - 1 ].transactions.push({
+                        transactionArray[ accountName ].push({
                             type,
-                            date,
+                            approvalDate,
                             description,
                             amount: Number(replaceString(amount, "$", '')),
                             beneficiary,
@@ -186,13 +203,13 @@ export class BankOfOkraScrapperService {
                 // go back to previous page
                 await page.goBack();
             }
-            return accountInformation
+            return transactionArray
         } catch (error) {
             console.log(error);
             throw "Could not get customer transactions"
         }
     }
-    async run(options: BankOfOkraOptions) {
+    async run(options: IBankOfOkraOptions) {
         try {
             await this.createBrowser()
             this.url = options.url;
@@ -202,7 +219,7 @@ export class BankOfOkraScrapperService {
             // Set screen size
             await this.page.setViewport({ width: 1366, height: 768 });
             // authenticate user
-            await this.authenticateUser(this.page)
+            await this.authenticateUser(this.page, options)
 
             // wait for page to navigate to user information page
             await this.page.waitForNavigation()
@@ -212,11 +229,12 @@ export class BankOfOkraScrapperService {
             const customer: ICustomer = await this.getCustomerDetails(this.page)
 
             // get account information
-            let accountInformation: IAccount[] = await this.getAccountInformation(this.page)
+            let accountInformation: IAccount[] = await this.getAccountInformation({ page: this.page, customer, bank: options.bank })
 
             // add transactions to account information
-            accountInformation = await this.getTransactions(this.page, accountInformation)
-            return { customer, accountInformation }
+            const transactionInformation = await this.getTransactions(this.page, accountInformation)
+
+            return { customer, accountInformation, transactionInformation }
         } catch (error) {
             console.log(error);
             throw error
