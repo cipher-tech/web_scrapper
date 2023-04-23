@@ -91,6 +91,68 @@ export class BankOfOkraScrapperService {
 
         return account
     }
+
+    async getTransactions(page: Page, accountInformation: any) {
+        const accountButtonSelector = 'div > a[href^="/account"]'
+        // get button link to each account transaction
+        const accountButtons = await page.$$(accountButtonSelector);
+
+        for (let i = 1; i <= accountButtons.length; i++) {
+            // create an array to store transactions to the corresponding account
+            accountInformation[ i - 1 ].transactions = []
+            // click link to display account transaction
+            await page.waitForSelector('[class="flex-1 w-full"] a.rounded');
+
+            await page.click(`section[class~="w-4/5"]:nth-child(${ i + 1 }) > ${ accountButtonSelector }`)
+            // wait for transactions to appear
+            await page.waitForSelector('tbody > tr');
+
+            // get all rendered transactions
+            const transactions = await page.$$('[class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"]');
+            // get number of transactions being we have displayed so far e.g 30 of 448
+            let totalVisitedTransactions = await page.$eval('[class="font-semibold text-gray-900 dark:text-white"]:nth-child(2)', el => el.textContent);
+            // get total number of transactions
+            const totalTransactions = await page.$eval('[class="-semibold text-gray-900 dark:text-white"]:nth-child(3)', el => el.textContent);
+
+            const limit = config?.ENVIRONMENT === 'development' ? 10 : +(totalTransactions || 0)
+            // loop through the transactions displayed and add each one too the object
+            while (totalVisitedTransactions && +totalVisitedTransactions <= limit) {
+                // get transaction details
+                for (const transaction of transactions) {
+                    // get transaction type
+                    let type = await page.evaluate(el => el.querySelector('th:nth-child(1)')?.textContent, transaction)
+                    // get transaction date
+                    let date = await page.evaluate(el => el.querySelector('td:nth-child(2)')?.textContent, transaction)
+                    // get transaction description
+                    let description = await page.evaluate(el => el.querySelector('td:nth-child(3)')?.textContent, transaction)
+                    // get transaction amount
+                    let amount = await page.evaluate(el => el.querySelector('td:nth-child(4)')?.textContent, transaction)
+                    // get transaction beneficiary
+                    let beneficiary = await page.evaluate(el => el.querySelector('td:nth-child(5)')?.textContent, transaction)
+                    // get transaction sender
+                    let sender = await page.evaluate(el => el.querySelector('td:nth-child(6)')?.textContent, transaction)
+
+                    // add transactions to account information
+                    accountInformation[ i - 1 ].transactions.push({
+                        type,
+                        date,
+                        description,
+                        amount,
+                        beneficiary,
+                        sender
+                    })
+                }
+                // click the next button
+                await page.click('[class="inline-flex mt-2 xs:mt-0"] > button:nth-child(2)')
+                // wait for page to load
+                await page.waitForSelector('[class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"]');
+                totalVisitedTransactions = await page.$eval('[class="font-semibold text-gray-900 dark:text-white"]:nth-child(2)', el => el.textContent);
+            }
+            // go back to previous page
+            await page.goBack();
+        }
+        return accountInformation
+    }
     async run(options: BankOfOkraOptions) {
         await this.createBrowser()
         this.url = options.url;
@@ -102,14 +164,20 @@ export class BankOfOkraScrapperService {
         // authenticate user
         await this.authenticateUser(this.page)
 
+        // wait for page to navigate to user information page
         await this.page.waitForNavigation()
+        // wait for element to appear on screen
         await this.page.waitForSelector('[class="text-2xl font-semibold text-gray-800"]');
+        // get customer information
         const customer = await this.getCustomerDetails(this.page)
 
-        const accountInformation = this.getAccountInformation(this.page)
-        // const accountButtons = await this.page.$$('[class="flex-1 w-full"] a.rounded');
+        // get account information
+        let accountInformation: any = await this.getAccountInformation(this.page)
 
-        return { customer, accountInformation}
+        // add transactions to account information
+        accountInformation = await this.getTransactions(this.page, accountInformation)
+
+        return { customer, accountInformation }
     }
 
 }
