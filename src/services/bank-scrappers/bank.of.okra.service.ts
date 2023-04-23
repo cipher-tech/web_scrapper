@@ -54,6 +54,27 @@ export class BankOfOkraScrapperService {
         await this.page.click('[type="submit"]')
         return true;
     }
+
+    async getCustomerDetails(page: Page) {
+        const customer: any = {}
+
+        // get customer name
+        const customerName = await page.$$('[class="text-2xl font-semibold text-gray-800"]');
+
+        for (let text of customerName) {
+            customer.name = await page.evaluate(el => el.innerHTML, text)
+        }
+
+        // get other customer information
+        const customerInfo = await page.$$('div > [class="text-default my-3"]');
+
+        customer.address = await page.evaluate(el => el.textContent, customerInfo[ 0 ])
+        customer.bvn = await page.evaluate(el => el.textContent, customerInfo[ 1 ])
+        customer.phone_no = await page.evaluate(el => el.textContent, customerInfo[ 2 ])
+        customer.email = await page.evaluate(el => el.textContent, customerInfo[ 3 ])
+
+        return customer
+    }
     async run(options: BankOfOkraOptions) {
         await this.createBrowser()
         this.url = options.url;
@@ -63,7 +84,13 @@ export class BankOfOkraScrapperService {
         // Set screen size
         await this.page.setViewport({ width: 1366, height: 768 });
         // authenticate user
-        this.authenticateUser(this.page)
+        await this.authenticateUser(this.page)
+
+        await this.page.waitForNavigation()
+        await this.page.waitForSelector('[class="text-2xl font-semibold text-gray-800"]');
+        const customer = await this.getCustomerDetails(this.page)
+
+        return {customer}
     }
 
 }
