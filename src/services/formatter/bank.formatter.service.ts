@@ -1,19 +1,16 @@
-import { IAccount, ICustomer, ICustomerScrapTemplate } from "../../interfaces/user.interface";
+import { IAccount, IAccountScrapTemplate, IAuth, ICustomer, ICustomerScrapTemplate, ITransaction } from "../../interfaces/user.interface";
 import HashText from "../../util/hashText.helper";
-import { replaceString } from "../../util/replace.string.util";
+import { replaceSpecialCharacters, getNumbers } from "../../util/replace.string.util";
 
 type AuthFormatter = {
     token: string;
     passCode: string;
     platform: string;
 }
-interface accountFormatter {
-    customerName: string;
-    title: string;
-    amount: string;
-    ledgerBalance: string;
-    accountType: string;
-    bank: string;
+type TransactionFormatter = {
+    customer: ICustomer
+    account: IAccount,
+    transaction: Partial<ITransaction>
 }
 export class Formatter {
     async authFormatter(options: AuthFormatter) {
@@ -25,7 +22,7 @@ export class Formatter {
             platform
         }
     }
-    customerFormatter(options: Partial<ICustomerScrapTemplate>): ICustomer {
+    customerFormatter(options: Partial<ICustomerScrapTemplate>, auth: IAuth): ICustomer {
         const {
             firstName,
             lastName,
@@ -38,26 +35,62 @@ export class Formatter {
             state,
             country,
             email = "" } = options
+
         return {
             //if name is already combined continue else merge first and last name
-            name: name ? name.trim() : `${ firstName } ${ lastName }`.trim(),
+            name: replaceSpecialCharacters(name ? name : `${ firstName } ${ lastName }`).toLowerCase(),
             //if address is combined continue else merge apartmentNumber, street, state and country
-            address: address ? address.trim() : `${ apartmentNumber } ${ street } ${ state } ${ country }`.trim(),
-            bvn: bvn.trim(),
-            phoneNumber: phoneNumber.trim(),
-            email: email.trim()
+            address: replaceSpecialCharacters(address ? address : `${ apartmentNumber } ${ street } ${ state } ${ country }`).toLowerCase(),
+            bvn: replaceSpecialCharacters(bvn).toLowerCase(),
+            phoneNumber: replaceSpecialCharacters(phoneNumber).toLowerCase(),
+            email: email.toLowerCase(),
+            auth: auth._id
         }
     }
-    accountFormatter(account: accountFormatter): IAccount {
-        const { title, amount, ledgerBalance, accountType, bank } = account
+    accountFormatter(account: Partial<IAccountScrapTemplate>[], customer: ICustomer): IAccount[] {
+        const accountDetails = account.map(account => {
+            let currency: string, symbol: string
+            if (String(account?.accountBalance).includes("$")) {
+                currency = "USD"
+                symbol = "$"
+            } else {
+                currency = "NGN"
+                symbol = "₦"
+            }
+            return {
+                customer: customer._id,
+                title: account!.title || "",
+                accountBalance: parseFloat(getNumbers(`${ account.accountBalance }`)),
+                ledgerBalance: parseFloat(getNumbers(`${ account.ledgerBalance }`)),
+                accountType: account.title || "",
+                bank: account.bank || "",
+                currency,
+                symbol,
+            }
+
+        })
+        return accountDetails
+    }
+
+    transactionFormatter(options: TransactionFormatter): ITransaction {
         return {
-            title,
-            amount: Number(replaceString(amount, "$", '')),
-            ledgerBalance: Number(replaceString(ledgerBalance, "$", '')),
-            accountType,
-            bank,
-            currency: amount.includes("$") ? "USD" : "NGN",
-            symbol: amount.includes("$") ? "$" : "N",
+            transactionType: options.transaction.transactionType || "",
+            account: options.account._id,
+            customer: options.customer._id,
+            approvalDate: new Date(options.transaction.approvalDate || "").toISOString(),
+            description: options.transaction.description || "",
+            amount: options.transaction.amount || 0,
+            destinationId: options.transaction.destinationId || "",
+            senderId:  options.transaction.senderId || '',
+            status: options.transaction.status || '',
+            billerId: options.transaction.billerId || '',
+            tax: options.transaction.tax || 0,
+            totalPayment: (options.transaction.tax || 0) + (options.transaction.amount || 0),
+            paymentMethod: options.transaction.paymentMethod || '',
+            paymentMethodId: options.transaction.paymentMethodId || '',
+            eventId: options.transaction.eventId || '',
+            sourceBankId: options.transaction.sourceBankId || '',
+            destinationBankId: options.transaction.destinationBankId || '',
         }
     }
 }
