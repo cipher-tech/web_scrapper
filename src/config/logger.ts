@@ -1,11 +1,12 @@
 import winston, { format } from "winston";
+import config from ".";
 
 const { combine, timestamp, label, printf, splat, simple } = format;
 
 /**
   * Logger handles all logs in the application
   */
-const logger = (env: string) => {
+const appLogger = (env: string) => {
     let ret;
     // define log format
     const loggerFormat = printf(({ level, message, label, timestamp }) => (
@@ -121,4 +122,14 @@ const logger = (env: string) => {
     return ret;
 };
 
+let logger = appLogger("");
+// initialize logger for the right environment
+if (config?.ENVIRONMENT === "development") {
+    logger = appLogger("development");
+} else if (config?.ENVIRONMENT === "production") {
+    logger = appLogger("production");
+} else {
+    logger = appLogger("");
+}
+logger = appLogger("")
 export default logger;
