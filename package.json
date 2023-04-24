@@ -4,7 +4,7 @@
   "description": "A test project using Puppeteer to scrap web pages.",
   "main": "src/index.js",
   "scripts": {
-    "dev": "ts-node-dev --watch ['src'] --respawn src/index.ts",
+    "dev": "ts-node-dev  --exit-child --watch ['src'] --respawn src/index.ts",
     "lint": "eslint --ext .ts src tests",
     "prettier": "prettier '{src,tests}/**/*.ts' --write",
     "tsc": "tsc",
