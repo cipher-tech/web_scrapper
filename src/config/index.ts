@@ -7,7 +7,9 @@ import production from "./env/production";
 const defaults = {
     root: path.normalize(`${__dirname}/..`),
     serviceName: "web_scrapper",
-    SALT_ROUNDS: process.env.SALT_ROUNDS
+    SALT_ROUNDS: process.env.SALT_ROUNDS,
+    PORT: process.env.PORT,
+    TEST_URL: process.env.TEST_URL
 };
 
 // pre-select config object based on the node environment(development, production etc).
