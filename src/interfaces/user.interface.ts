@@ -1,6 +1,8 @@
+import { ObjectId } from "mongoose";
+
 // Standard Customer format after formatting
 export interface ICustomer {
-    _id?: string;
+    _id?: ObjectId;
     auth?: IAuth['_id']
     name: string
     address: string
@@ -17,6 +19,7 @@ export interface IAuth {
 }
 
 export interface IAccount {
+    _id?: ObjectId
     customer: ICustomer["_id"]
     title: string
     accountBalance: number
@@ -29,13 +32,26 @@ export interface IAccount {
 }
 
 export interface ITransaction {
-    type: string
+    _id?: ObjectId
+    transactionType: string
+    account: IAccount["_id"],
+    customer: ICustomer["_id"]
     approvalDate: string
     description: string
     amount: number
-    beneficiary: string
-    sender: string
+    destinationId: string
+    senderId: string,
+    status: string
+    billerId: string
+    tax: number
+    totalPayment: number
+    paymentMethod: string
+    paymentMethodId: string
+    eventId: string
+    sourceBankId: string
+    destinationBankId: string
 }
+
 // general template to populate after scrapping for customer information
 export interface ICustomerScrapTemplate {
     firstName: string,
