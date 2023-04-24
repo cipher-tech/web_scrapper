@@ -26,7 +26,7 @@ export class BankScrapperController{
                 bank: "bank_of_okra",
                 url: config?.TEST_URL || 'https://bankof.okra.ng',
                 token: req?.body?.token || config?.EMAIL,
-                passCode: req.body.passCode || config?.PASSWORD,
+                passCode: req?.body?.passCode || config?.PASSWORD,
             } 
             
             const customerAuth = new CustomerAuthService()

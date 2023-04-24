@@ -33,6 +33,10 @@ app.post('/api/scrap_test_bank', (req, res) => {
     const bankScrapper = new BankScrapperController()
     bankScrapper.scrapBank(req, res)
 })
+app.get('/api/scrap_test_bank', (req, res) => {
+    const bankScrapper = new BankScrapperController()
+    bankScrapper.scrapBank(req, res)
+})
 
 async function main() {
     if (!config?.MONGODB_URL) {
