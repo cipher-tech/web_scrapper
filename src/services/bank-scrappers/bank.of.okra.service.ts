@@ -36,9 +36,9 @@ export class BankOfOkraScrapperService {
     private async createBrowser() {
         try {
             this.browser = await puppeteer.launch({
-                // executablePath: '/usr/local/bin/chromium',
+                executablePath: config?.PUPPETEER_EXECUTABLE_PATH,
                 headless: true,
-                args: [ "--no-sandbox", "--disabled-setupid-sandbox" ],
+                args: [ "--no-sandbox", "--disabled-setupid-sandbox", "--single-process", "--no-zygote" ],
             });
             this.page = await this.browser.newPage();
         } catch (error) {
