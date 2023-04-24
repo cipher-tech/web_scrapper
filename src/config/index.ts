@@ -9,7 +9,8 @@ const defaults = {
     serviceName: "web_scrapper",
     SALT_ROUNDS: process.env.SALT_ROUNDS,
     PORT: process.env.PORT,
-    TEST_URL: process.env.TEST_URL
+    TEST_URL: process.env.TEST_URL,
+    PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH
 };
 
 // pre-select config object based on the node environment(development, production etc).
