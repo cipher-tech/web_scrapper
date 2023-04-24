@@ -3,10 +3,11 @@ import config from '../../config';
 import { IAccount, IAccountScrapTemplate, IAuth, ICustomer, ICustomerScrapTemplate, ITransaction } from '../../interfaces/user.interface';
 import { getNumbers, replaceString } from '../../util/replace.string.util';
 import { Formatter } from '../formatter/bank.formatter.service';
-import { IScrapBankOptions } from '../../controllers/bank.scrapper.controller';
+
 import CustomerModel from '../../models/customer.model';
 import accountModel from '../../models/account.model';
 import transactionModel from '../../models/transaction.model';
+import { IScrapBankOptions } from '../../middleware/auth.middleware';
 
 interface IBankOfOkraOptions extends IScrapBankOptions {
     auth: IAuth
@@ -37,7 +38,7 @@ export class BankOfOkraScrapperService {
         try {
             this.browser = await puppeteer.launch({
                 executablePath: config?.PUPPETEER_EXECUTABLE_PATH,
-                headless: true,
+                headless: !true,
                 args: [ "--no-sandbox", "--disabled-setupid-sandbox", "--single-process", "--no-zygote" ],
             });
             this.page = await this.browser.newPage();
@@ -128,8 +129,6 @@ export class BankOfOkraScrapperService {
                 const accountBalance = (await page.evaluate(el => el.querySelector('div > p.font-bold')?.textContent, acct)) || ""
                 const ledgerBalance = await page.evaluate(el => el.querySelector('p:nth-child(2)')?.textContent, acct) || ""
 
-                console.log(":::::::::: ledgerBalance ledgerBalance",{accountBalance, ledgerBalance});
-
                 account.push({
                     title,
                     accountBalance: accountBalance,
@@ -199,8 +198,6 @@ export class BankOfOkraScrapperService {
                         // get transaction sender
                         let senderId = await page.evaluate(el => el.querySelector('td:nth-child(6)')?.textContent, transaction) || ""
 
-                        console.log("::::::::::",amount);
-                        
                         const formatter = new Formatter()
                         // format transactions before adding  to array to avoid looping twice
                         transactionArray[ accountType ].push(
@@ -227,13 +224,16 @@ export class BankOfOkraScrapperService {
                 // go back to previous page
                 await page.goBack();
             }
-            console.log(transactionArray);
-
             return transactionArray
         } catch (error) {
             console.log(error);
             throw "Could not get customer transactions"
         }
+    }
+    
+    async signOut(page: Page){
+        await page.click('a[class="no-underline font-bold hover:underline cursor-pointer"]:nth-child(2)')
+        return true
     }
     async run(options: IBankOfOkraOptions) {
         try {
@@ -253,7 +253,7 @@ export class BankOfOkraScrapperService {
             await this.page.waitForSelector('[class="text-2xl font-semibold text-gray-800"]');
             // get customer information
             const formattedCustomerInfo: ICustomer = await this.getCustomerDetails(this.page, options)
-
+ 
             const customer = await CustomerModel.createCustomer(formattedCustomerInfo)
             // get account information
             let accountInformation: IAccount[] = await this.getAccountInformation({ page: this.page, customer, bank: options.bank })
@@ -266,6 +266,9 @@ export class BankOfOkraScrapperService {
             // save transactions
             const transactions = await transactionModel.createTransaction(transactionInformation)
             console.log({ customer, accountInformation, accounts, transactionInformation, transactions });
+
+            await this.signOut(this.page)
+            this.browser.close()
 
             return { customer, accountInformation, transactions }
         } catch (error) {
