@@ -1,78 +1,58 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
+import { Server } from "http";
 import dotenv from "dotenv";
-import mongoose from "mongoose";
-// import loggerInit from "./config/logger";
 // initialize dotenv before importing config to ensure it gets populated.
 dotenv.config()
-
-// initiated dotenv before importing config to ensure it gets populated.
-// eslint-disable-next-line import/first
-// import config from "./config";
-import { BankScrapperController } from "./controllers";
+import router from "./routes/bank-scrapper";
 import config from "./config";
-import { Server } from "http";
+import logger from "./config/logger";
+import { connectDatabase } from "./config/database/database";
 
-// var logger;
-// // initialize logger for the right environment
-// if (config?.ENVIRONMENT === "development") {
-//     logger = loggerInit("development");
-// } else if (config?.ENVIRONMENT === "production") {
-//     logger = loggerInit("production");
-// } else {
-//     logger = loggerInit("");
-// }
-
-// global.logger = logger;
-// logger.info("Project initialized")
-
+logger.info("Project initialized")
+// initialize express app
 const app = express();
 let server: Server;
 
 app.use(express.json());
-app.post('/api/scrap_test_bank', (req, res) => {
-    const bankScrapper = new BankScrapperController()
-    bankScrapper.scrapBank(req, res)
-})
-app.get('/api/scrap_test_bank', (req, res) => {
-    const bankScrapper = new BankScrapperController()
-    bankScrapper.scrapBank(req, res)
-})
+// configure express routes
+app.use("/api", router)
 
-async function main() {
-    if (!config?.MONGODB_URL) {
-        throw new Error("Could not load config file")
-    }
-    await mongoose.connect(config.MONGODB_URL);
-    console.log("database connected...");
-}
-
-main()
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    logger.error(err);
+    
+    res.status(500)
+        .json("Something went wrong please try again.");
+})
+// call  main function and start server after DB is connected
+connectDatabase()
     .then(() => {
         const port = config?.PORT || 4000;
+        // start server 
         server = app.listen(port, () => {
-            console.log(`Server is listening on port ${ port }`);
+            logger.info(`Server is listening on port ${ port }`);
         })
     })
-    .catch(err => console.log(err));
+    .catch(err => logger.error(err));
 
-
-
-    const exitHandler = () => {
-        if (server) {
-          server.close(() => {
-            console.log('Server closed');
+// stop application if server is closed
+const exitHandler = () => {
+    if (server) {
+        server.close(() => {
+            logger.info('Server closed');
             process.exit(1);
-          });
-        } else {
-          process.exit(1);
-        }
-      };
-      
-      const unexpectedErrorHandler = (error: Error) => {
-        console.log(error);
-        exitHandler();
-      };
-      
-      process.on('uncaughtException', unexpectedErrorHandler);
-      process.on('unhandledRejection', unexpectedErrorHandler);
-      
+        });
+    } else {
+        process.exit(1);
+    }
+};
+
+
+// handle unexpected Error 
+const unexpectedErrorHandler = (error: Error) => {
+    logger.error(error);
+    exitHandler();
+};
+
+// listen for unexpected Error
+process.on('uncaughtException', unexpectedErrorHandler);
+process.on('unhandledRejection', unexpectedErrorHandler);
