@@ -10,7 +10,8 @@ const defaults = {
     SALT_ROUNDS: process.env.SALT_ROUNDS,
     PORT: process.env.PORT,
     TEST_URL: process.env.TEST_URL,
-    PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH
+    PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH,
+    DOMAIN: process.env.DOMAIN
 };
 
 // pre-select config object based on the node environment(development, production etc).
