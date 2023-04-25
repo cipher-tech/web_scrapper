@@ -12,6 +12,7 @@
 # Description 
 
 ### live URL: https://web-scrapper-test.onrender.com/api/scrap_test_bank
+### local URL: localhost:4000/api/scrap_test_bank
 POST: `https://web-scrapper-test.onrender.com/api/scrap_test_bank`
 ```
 {
@@ -21,6 +22,9 @@ POST: `https://web-scrapper-test.onrender.com/api/scrap_test_bank`
 ```
 
 GET: `https://web-scrapper-test.onrender.com/api/scrap_test_bank`
+
+
+## Can be tested with postman
 
 This is an app that help's a user to manage pricing schemes. 
 It allows users to enter product and rules(special offers) that apply to those products. It is built like an online store so users can: 
@@ -113,6 +117,10 @@ Account entity can have many `Transactions` but a transaction can only belong to
 
 many `transaction` are related to one Customer via an `Account` 
 this forms a `Has-many-through` relationship between a `Customer` and `Transactions`.
+
+`Customer` has an auth field that is populated when `Customer` is fetched
+`Account` has a `Customer` field that holds `Customer` id for each account
+`Transactions` has an `Account`  and `Customer` field that holds Ids for the linked `Account` and `Customer` 
 
 `Auth` - `Customer`  (many-to-one)
 `Transactions` - `Account` (many-to-one)
