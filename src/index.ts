@@ -32,7 +32,10 @@ connectDatabase()
             logger.info(`Server is listening on port ${ port }`);
         })
     })
-    .catch(err => logger.error(err));
+    .catch(err => {
+        logger.error(err)
+        throw new Error("could not connect to database please try again")
+    });
 
 // stop application if server is closed
 const exitHandler = () => {
