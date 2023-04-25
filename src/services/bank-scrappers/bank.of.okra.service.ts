@@ -1,4 +1,4 @@
-import puppeteer, { Browser, Page } from 'puppeteer';
+import { Page } from 'puppeteer';
 import config from '../../config';
 import { IAccount, IAccountScrapTemplate, IAuth, ICustomer, ICustomerScrapTemplate, ITransaction } from '../../interfaces/user.interface';
 import { getNumbers, replaceString } from '../../util/replace.string.util';
@@ -8,6 +8,8 @@ import CustomerModel from '../../models/customer.model';
 import accountModel from '../../models/account.model';
 import transactionModel from '../../models/transaction.model';
 import { IScrapBankOptions } from '../../middleware/auth.middleware';
+import { log } from 'console';
+import { BrowserInstance } from '../../util/browser.util';
 
 interface IBankOfOkraOptions extends IScrapBankOptions {
     auth: IAuth
@@ -29,24 +31,7 @@ type getAccountInformation = {
  *
  * @returns {object} BankOfOkraScrapperService
  */
-export class BankOfOkraScrapperService {
-    browser: Browser
-    page: Page
-    url: string
-
-    private async createBrowser() {
-        try {
-            this.browser = await puppeteer.launch({
-                executablePath: config?.PUPPETEER_EXECUTABLE_PATH,
-                headless: !true,
-                args: [ "--no-sandbox", "--disabled-setupid-sandbox", "--single-process", "--no-zygote" ],
-            });
-            this.page = await this.browser.newPage();
-        } catch (error) {
-            console.log(error);
-            throw "Could not initialize browser"
-        }
-    }
+export class BankOfOkraScrapperService extends BrowserInstance {
 
     async authenticateUser(page: Page, options: IBankOfOkraOptions) {
         try {
@@ -173,16 +158,18 @@ export class BankOfOkraScrapperService {
                 }
                 transactionArray[ accountType ] = []
                 // get all rendered transactions
-                const transactions = await page.$$('[class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"]');
+                let transactions = await page.$$('[class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"]');
                 // get number of transactions being we have displayed so far e.g 30 of 448
-                let totalVisitedTransactions = await page.$eval('[class="font-semibold text-gray-900 dark:text-white"]:nth-child(2)', el => el.textContent);
+                let totalVisitedTransactions = await page.$eval('[class="font-semibold text-gray-900 dark:text-white"]:nth-child(2)', el => el.textContent) || 0;
                 // get total number of transactions
-                const totalTransactions = await page.$eval('[class="font-semibold text-gray-900 dark:text-white"]:nth-child(3)', el => el.textContent);
-
+                const totalTransactions = await page.$eval('[class="font-semibold text-gray-900 dark:text-white"]:nth-child(3)', el => el.textContent) || 0;
+                const paginationLength = totalVisitedTransactions
                 // fetch a limited amount of transactions when in development
-                const limit = config?.ENVIRONMENT === 'development' ? 10 : +(totalTransactions || 0)
+                const limit = config?.ENVIRONMENT === 'development' ?
+                    10 :
+                    Math.ceil(+(totalTransactions || 1) / +(paginationLength || 1))
                 // loop through the transactions displayed and add each one too the object
-                while (totalVisitedTransactions && +totalVisitedTransactions <= limit) {
+                for (let j = 0; j < limit; j++) {
                     // get transaction details
                     for (const transaction of transactions) {
                         // get transaction type
@@ -218,8 +205,17 @@ export class BankOfOkraScrapperService {
                     // click the next button
                     await page.click('[class="inline-flex mt-2 xs:mt-0"] > button:nth-child(2)')
                     // wait for page to load
-                    await page.waitForSelector('[class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"]');
-                    totalVisitedTransactions = await page.$eval('[class="font-semibold text-gray-900 dark:text-white"]:nth-child(2)', el => el.textContent);
+                    page.setDefaultNavigationTimeout(0);
+                    // const loading = await page.waitForSelector('td:contains("Loading Page...")')
+                    if (totalVisitedTransactions !== Number(totalTransactions)) {
+                        await page.waitForSelector('[scope="row"]');
+                        transactions = await page.$$('[class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"]');
+
+                        totalVisitedTransactions = Number(await page.$eval('[class="font-semibold text-gray-900 dark:text-white"]:nth-child(2)', el => el.textContent));
+                    } else {
+                        continue
+                    }
+
                 }
                 // go back to previous page
                 await page.goBack();
@@ -230,8 +226,8 @@ export class BankOfOkraScrapperService {
             throw "Could not get customer transactions"
         }
     }
-    
-    async signOut(page: Page){
+
+    async signOut(page: Page) {
         await page.click('a[class="no-underline font-bold hover:underline cursor-pointer"]:nth-child(2)')
         return true
     }
@@ -241,7 +237,7 @@ export class BankOfOkraScrapperService {
             this.url = options.url;
             // go to website
             await this.page.goto(this.url);
-
+            this.page.setDefaultNavigationTimeout(0);
             // Set screen size
             await this.page.setViewport({ width: 1366, height: 768 });
             // authenticate user
@@ -253,7 +249,7 @@ export class BankOfOkraScrapperService {
             await this.page.waitForSelector('[class="text-2xl font-semibold text-gray-800"]');
             // get customer information
             const formattedCustomerInfo: ICustomer = await this.getCustomerDetails(this.page, options)
- 
+
             const customer = await CustomerModel.createCustomer(formattedCustomerInfo)
             // get account information
             let accountInformation: IAccount[] = await this.getAccountInformation({ page: this.page, customer, bank: options.bank })
@@ -265,15 +261,17 @@ export class BankOfOkraScrapperService {
 
             // save transactions
             const transactions = await transactionModel.createTransaction(transactionInformation)
-            console.log({ customer, accountInformation, accounts, transactionInformation, transactions });
-
+            //sign out after process is done
             await this.signOut(this.page)
             this.browser.close()
 
-            return { customer, accountInformation, transactions }
+            return { customer, accountInformation, transactionInformation, transactions }
         } catch (error) {
             console.log(error);
             throw error
+        } finally {
+            // close browser 
+            this.browser.close()
         }
     }
 
