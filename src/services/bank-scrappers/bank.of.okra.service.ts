@@ -8,7 +8,6 @@ import CustomerModel from '../../models/customer.model';
 import accountModel from '../../models/account.model';
 import transactionModel from '../../models/transaction.model';
 import { IScrapBankOptions } from '../../middleware/auth.middleware';
-import { log } from 'console';
 import { BrowserInstance } from '../../util/browser.util';
 
 interface IBankOfOkraOptions extends IScrapBankOptions {
